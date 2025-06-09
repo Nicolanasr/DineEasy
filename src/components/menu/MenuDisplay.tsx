@@ -493,6 +493,7 @@ const MenuItemCard = ({ item, onAddItem }: MenuItemCardProps) => {
 
                         <Button
                             onClick={handleAddItem}
+                            variant="outline"
                             size="sm"
                             className="gap-2 mt-4 w-full"
                         >

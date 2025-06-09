@@ -292,7 +292,7 @@ export type Database = {
 				Row: {
 					id: string;
 					session_id: string;
-					participant_id: string;
+					participant_id: string | null;
 					status: "cart" | "submitted" | "preparing" | "ready" | "served";
 					subtotal: number;
 					notes: string | null;
@@ -303,7 +303,7 @@ export type Database = {
 				Insert: {
 					id?: string;
 					session_id: string;
-					participant_id: string;
+					participant_id: string | null;
 					status?: "cart" | "submitted" | "preparing" | "ready" | "served";
 					subtotal?: number;
 					notes?: string | null;
@@ -314,7 +314,7 @@ export type Database = {
 				Update: {
 					id?: string;
 					session_id?: string;
-					participant_id?: string;
+					participant_id: string | null;
 					status?: "cart" | "submitted" | "preparing" | "ready" | "served";
 					subtotal?: number;
 					notes?: string | null;
@@ -333,6 +333,7 @@ export type Database = {
 					total_price: number;
 					customizations: string[] | null;
 					notes: string | null;
+					added_by_participant_id: string | null; // ADD THIS LINE
 					created_at: string;
 				};
 				Insert: {
@@ -344,6 +345,7 @@ export type Database = {
 					total_price: number;
 					customizations?: string[] | null;
 					notes?: string | null;
+					added_by_participant_id?: string | null; // ADD THIS LINE
 					created_at?: string;
 				};
 				Update: {
@@ -355,6 +357,7 @@ export type Database = {
 					total_price?: number;
 					customizations?: string[] | null;
 					notes?: string | null;
+					added_by_participant_id?: string | null; // ADD THIS LINE
 					created_at?: string;
 				};
 			};
