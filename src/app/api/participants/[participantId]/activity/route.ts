@@ -2,9 +2,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateParticipantActivity } from "@/lib/session-management";
 
-export async function PUT(request: NextRequest, { params }: { params: { participantId: string } }) {
+type Context = {
+	params: { participantId: string };
+};
+
+export async function PUT(request: NextRequest, context: Context) {
 	try {
-		await updateParticipantActivity(params.participantId);
+		const { participantId } = context.params;
+		await updateParticipantActivity(participantId);
 
 		return NextResponse.json({
 			success: true,
