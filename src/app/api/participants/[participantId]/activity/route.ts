@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateParticipantActivity } from "@/lib/session-management";
 
-type ParticipantActivityRouteContext = {
-	params: {
-		participantId: string;
-	};
-};
-
-export async function PUT(request: NextRequest, context: ParticipantActivityRouteContext) {
-	const { participantId } = context.params;
+export async function PUT(request: NextRequest, { params }: { params: Record<string, string> }) {
+	const { participantId } = params;
 
 	try {
 		await updateParticipantActivity(participantId);
