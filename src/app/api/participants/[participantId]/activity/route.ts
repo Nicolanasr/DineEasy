@@ -1,14 +1,16 @@
-// src/app/api/participants/[participantId]/activity/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { updateParticipantActivity } from "@/lib/session-management";
 
-type Context = {
-	params: { participantId: string };
+type ParticipantActivityRouteContext = {
+	params: {
+		participantId: string;
+	};
 };
 
-export async function PUT(request: NextRequest, context: Context) {
+export async function PUT(request: NextRequest, context: ParticipantActivityRouteContext) {
+	const { participantId } = context.params;
+
 	try {
-		const { participantId } = context.params;
 		await updateParticipantActivity(participantId);
 
 		return NextResponse.json({
