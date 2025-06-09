@@ -1,26 +1,174 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+	/* Container configuration */
+	--container-center: true;
+	--container-padding: 2rem;
+	--container-screens-2xl: 1400px;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+	/* Restaurant brand colors */
+	--color-primary-50: #fef2f2;
+	--color-primary-100: #fee2e2;
+	--color-primary-200: #fecaca;
+	--color-primary-300: #fca5a5;
+	--color-primary-400: #f87171;
+	--color-primary-500: #ef4444;
+	--color-primary-600: #dc2626;
+	--color-primary-700: #b91c1c;
+	--color-primary-800: #991b1b;
+	--color-primary-900: #7f1d1d;
+
+	/* Custom restaurant colors */
+	--color-restaurant-gold: #d4af37;
+	--color-restaurant-cream: #f5f5dc;
+	--color-restaurant-charcoal: #36454f;
+	--color-restaurant-sage: #9caf88;
+
+	/* Design system colors */
+	--color-background: 0 0% 100%;
+	--color-foreground: 222.2 84% 4.9%;
+	--color-card: 0 0% 100%;
+	--color-card-foreground: 222.2 84% 4.9%;
+	--color-popover: 0 0% 100%;
+	--color-popover-foreground: 222.2 84% 4.9%;
+	--color-muted: 210 40% 96%;
+	--color-muted-foreground: 215.4 16.3% 46.9%;
+	--color-accent: 210 40% 96%;
+	--color-accent-foreground: 222.2 47.4% 11.2%;
+	--color-destructive: 0 84.2% 60.2%;
+	--color-destructive-foreground: 210 40% 98%;
+	--color-border: 214.3 31.8% 91.4%;
+	--color-input: 214.3 31.8% 91.4%;
+	--color-ring: 222.2 84% 4.9%;
+
+	/* Border radius */
+	--radius: 0.5rem;
+	--radius-lg: var(--radius);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-sm: calc(var(--radius) - 4px);
+
+	/* Custom animations */
+	--animate-accordion-down: accordion-down 0.2s ease-out;
+	--animate-accordion-up: accordion-up 0.2s ease-out;
+	--animate-pulse-order: pulse-order 2s ease-in-out infinite;
+	--animate-slide-up: slide-up 0.3s ease-out;
+
+	/* Font families */
+	--font-sans: var(--font-geist-sans), system-ui, sans-serif;
+	--font-mono: var(--font-geist-mono), monospace;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+	@theme {
+		--color-background: 222.2 84% 4.9%;
+		--color-foreground: 210 40% 98%;
+		--color-card: 222.2 84% 4.9%;
+		--color-card-foreground: 210 40% 98%;
+		--color-popover: 222.2 84% 4.9%;
+		--color-popover-foreground: 210 40% 98%;
+		--color-muted: 217.2 32.6% 17.5%;
+		--color-muted-foreground: 215 20.2% 65.1%;
+		--color-accent: 217.2 32.6% 17.5%;
+		--color-accent-foreground: 210 40% 98%;
+		--color-destructive: 0 62.8% 30.6%;
+		--color-destructive-foreground: 210 40% 98%;
+		--color-border: 217.2 32.6% 17.5%;
+		--color-input: 217.2 32.6% 17.5%;
+		--color-ring: 212.7 26.8% 83.9%;
+	}
+}
+
+/* Keyframes for custom animations */
+@keyframes accordion-down {
+	from {
+		height: 0;
+	}
+	to {
+		height: var(--radix-accordion-content-height);
+	}
+}
+
+@keyframes accordion-up {
+	from {
+		height: var(--radix-accordion-content-height);
+	}
+	to {
+		height: 0;
+	}
+}
+
+@keyframes pulse-order {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.8;
+	}
+}
+
+@keyframes slide-up {
+	0% {
+		transform: translateY(100%);
+		opacity: 0;
+	}
+	100% {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}
+
+/* Base styles */
+* {
+	border-color: hsl(var(--color-border));
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+	background-color: hsl(var(--color-background));
+	color: hsl(var(--color-foreground));
+}
+
+/* Custom restaurant-specific utility classes */
+.menu-item-card {
+	background-color: hsl(var(--color-card));
+	border: 1px solid hsl(var(--color-border));
+	border-radius: var(--radius-lg);
+	padding: 1rem;
+	transition: box-shadow 0.2s ease-in-out;
+}
+
+.menu-item-card:hover {
+	box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.participant-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.25rem 0.5rem;
+	border-radius: 9999px;
+	font-size: 0.75rem;
+	font-weight: 500;
+}
+
+.order-status {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.125rem 0.625rem;
+	border-radius: 9999px;
+	font-size: 0.75rem;
+	font-weight: 500;
+}
+
+.table-session-container {
+	max-width: 28rem;
+	margin: 0 auto;
+	background-color: hsl(var(--color-background));
+	min-height: 100vh;
+}
+
+/* Mobile-first responsive design */
+@media (max-width: 640px) {
+	.table-session-container {
+		padding: 1rem;
+	}
 }
