@@ -81,7 +81,7 @@ export const useTableSession = (restaurantSlug: string, tableNumber: string): Us
 			// Create or join session using enhanced logic
 			const session = await createOrJoinSession(table.id, restaurant.id);
 
-			// Load existing participants
+			//  Load existing participants
 			const { data: participants } = await supabase
 				.from("session_participants")
 				.select("*")
