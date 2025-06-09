@@ -374,106 +374,100 @@ const MenuItemCard = ({ item, onAddItem }: MenuItemCardProps) => {
 
                         {/* Add to Cart Controls */}
                         {onAddItem && (
-                            <div className="flex items-center justify-between mt-4">
-                                {/* Quantity Controls */}
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={decrementQuantity}
-                                        disabled={quantity <= 1}
-                                        className="h-8 w-8 p-0"
-                                    >
-                                        <Minus className="w-3 h-3" />
-                                    </Button>
+                            <>
+                                <div className="flex items-center justify-between mt-4">
+                                    {/* Quantity Controls */}
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={decrementQuantity}
+                                            disabled={quantity <= 1}
+                                            className="h-8 w-8 p-0"
+                                        >
+                                            <Minus className="w-3 h-3" />
+                                        </Button>
 
-                                    <span className="text-sm font-medium w-8 text-center">
-                                        {quantity}
-                                    </span>
+                                        <span className="text-sm font-medium w-8 text-center">
+                                            {quantity}
+                                        </span>
 
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={incrementQuantity}
-                                        className="h-8 w-8 p-0"
-                                    >
-                                        <Plus className="w-3 h-3" />
-                                    </Button>
-                                </div>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={incrementQuantity}
+                                            className="h-8 w-8 p-0"
+                                        >
+                                            <Plus className="w-3 h-3" />
+                                        </Button>
+                                    </div>
 
-                                {/* Action Buttons */}
-                                <div className="flex items-center gap-2">
-                                    {/* Customization Button */}
-                                    <Dialog open={isCustomizationOpen} onOpenChange={setIsCustomizationOpen}>
-                                        <DialogTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="gap-1"
-                                            >
-                                                <Settings className="w-3 h-3" />
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="max-w-md bg-white">
-                                            <DialogHeader>
-                                                <DialogTitle>Customize {item.name}</DialogTitle>
-                                            </DialogHeader>
-                                            <div className="space-y-4">
-                                                {/* Customization Options */}
-                                                <div>
-                                                    <Label className="text-sm font-medium">Options</Label>
-                                                    <div className="grid grid-cols-2 gap-2 mt-2">
-                                                        {availableCustomizations.map((option) => (
-                                                            <Button
-                                                                key={option}
-                                                                variant={customizations.includes(option) ? "default" : "outline"}
-                                                                size="sm"
-                                                                onClick={() => toggleCustomization(option)}
-                                                                className="text-xs justify-start"
-                                                            >
-                                                                {option}
-                                                            </Button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-
-                                                {/* Notes */}
-                                                <div>
-                                                    <Label htmlFor="notes" className="text-sm font-medium">
-                                                        Special Instructions
-                                                    </Label>
-                                                    <Textarea
-                                                        id="notes"
-                                                        placeholder="Any special requests..."
-                                                        value={notes}
-                                                        onChange={(e: { target: { value: SetStateAction<string> } }) => setNotes(e.target.value)}
-                                                        className="mt-1"
-                                                        rows={3}
-                                                    />
-                                                </div>
-
-                                                {/* Apply Button */}
+                                    {/* Action Buttons */}
+                                    <div className="flex items-center gap-2">
+                                        {/* Customization Button */}
+                                        <Dialog open={isCustomizationOpen} onOpenChange={setIsCustomizationOpen}>
+                                            <DialogTrigger asChild>
                                                 <Button
-                                                    onClick={() => setIsCustomizationOpen(false)}
-                                                    className="w-full"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="gap-1"
                                                 >
-                                                    Apply Customizations
+                                                    <Settings className="w-3 h-3" />
                                                 </Button>
-                                            </div>
-                                        </DialogContent>
-                                    </Dialog>
+                                            </DialogTrigger>
+                                            <DialogContent className="max-w-md bg-white">
+                                                <DialogHeader>
+                                                    <DialogTitle>Customize {item.name}</DialogTitle>
+                                                </DialogHeader>
+                                                <div className="space-y-4">
+                                                    {/* Customization Options */}
+                                                    <div>
+                                                        <Label className="text-sm font-medium">Options</Label>
+                                                        <div className="grid grid-cols-2 gap-2 mt-2">
+                                                            {availableCustomizations.map((option) => (
+                                                                <Button
+                                                                    key={option}
+                                                                    variant={customizations.includes(option) ? "default" : "outline"}
+                                                                    size="sm"
+                                                                    onClick={() => toggleCustomization(option)}
+                                                                    className="text-xs justify-start"
+                                                                >
+                                                                    {option}
+                                                                </Button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
 
+                                                    {/* Notes */}
+                                                    <div>
+                                                        <Label htmlFor="notes" className="text-sm font-medium">
+                                                            Special Instructions
+                                                        </Label>
+                                                        <Textarea
+                                                            id="notes"
+                                                            placeholder="Any special requests..."
+                                                            value={notes}
+                                                            onChange={(e: { target: { value: SetStateAction<string> } }) => setNotes(e.target.value)}
+                                                            className="mt-1"
+                                                            rows={3}
+                                                        />
+                                                    </div>
+
+                                                    {/* Apply Button */}
+                                                    <Button
+                                                        onClick={() => setIsCustomizationOpen(false)}
+                                                        className="w-full"
+                                                    >
+                                                        Apply Customizations
+                                                    </Button>
+                                                </div>
+                                            </DialogContent>
+                                        </Dialog>
+
+                                    </div>
                                     {/* Add to Cart Button */}
-                                    <Button
-                                        onClick={handleAddItem}
-                                        size="sm"
-                                        className="gap-2"
-                                    >
-                                        <Plus className="w-3 h-3" />
-                                        Add ${(item.price * quantity).toFixed(2)}
-                                    </Button>
                                 </div>
-                            </div>
+                            </>
                         )}
 
                         {/* Show active customizations */}
@@ -496,7 +490,17 @@ const MenuItemCard = ({ item, onAddItem }: MenuItemCardProps) => {
                                 )}
                             </div>
                         )}
+
+                        <Button
+                            onClick={handleAddItem}
+                            size="sm"
+                            className="gap-2 mt-4 w-full"
+                        >
+                            <Plus className="w-3 h-3" />
+                            Add ${(item.price * quantity).toFixed(2)}
+                        </Button>
                     </div>
+
                 </div>
             </CardContent>
         </Card>
