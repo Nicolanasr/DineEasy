@@ -2,14 +2,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionDetails, endSession } from "@/lib/session-management";
 
-// Define the params type explicitly
-type Params = {
-	sessionId: string;
-};
-
-export async function GET(request: NextRequest, context: { params: Params }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ sessionId: string }> }) {
 	try {
-		const { sessionId } = context.params;
+		const { sessionId } = await params; // Note the 'await' here
 		const sessionDetails = await getSessionDetails(sessionId);
 		return NextResponse.json(sessionDetails);
 	} catch (error) {
@@ -18,9 +13,9 @@ export async function GET(request: NextRequest, context: { params: Params }) {
 	}
 }
 
-export async function DELETE(request: NextRequest, context: { params: Params }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ sessionId: string }> }) {
 	try {
-		const { sessionId } = context.params;
+		const { sessionId } = await params; // Note the 'await' here
 		const url = new URL(request.url);
 		const reason = (url.searchParams.get("reason") as "customer_left" | "manual_close" | "new_customers" | "staff_reset") || "manual_close";
 
