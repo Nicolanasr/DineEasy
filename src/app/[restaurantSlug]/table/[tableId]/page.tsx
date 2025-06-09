@@ -454,24 +454,6 @@ export default function TableSessionPage() {
                 </div>
             )}
 
-            {/* Debug Info (Development Only) */}
-            {process.env.NODE_ENV === 'development' && session && (
-                <Card className="mt-6 border-dashed">
-                    <CardHeader>
-                        <CardTitle className="text-sm">Debug Info</CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-xs space-y-1">
-                        <p>Session ID: {session.id}</p>
-                        <p>Status: {session.status}</p>
-                        <p>Expires: {new Date(session.expires_at).toLocaleString()}</p>
-                        <p>Participants: {participants.length}</p>
-                        <p>Current User: {currentParticipant?.display_name || 'None'}</p>
-                        <p>Restaurant ID: {restaurant?.id}</p>
-                        <p>Cart Items: {cartItems.length}</p>
-                        <p>Cart Total: ${cartTotal.toFixed(2)}</p>
-                    </CardContent>
-                </Card>
-            )}
         </div>
     )
 }

@@ -1,7 +1,7 @@
-// src/components/menu/MenuDisplay.tsx
+// src/components / menu / MenuDisplay.tsx
 'use client'
 
-import { useState } from 'react'
+import { SetStateAction, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,13 +10,16 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Search, Filter, Clock, AlertCircle, Plus, Minus } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Search, Filter, Clock, AlertCircle, Plus, Minus, Settings, StickyNote } from 'lucide-react'
 import { useMenu, useDietaryFilters } from '@/hooks/use-menu'
 import type { MenuItem } from '@/lib/supabase'
 
 interface MenuDisplayProps {
     restaurantId: string
-    onAddItem?: (item: MenuItem, quantity: number) => void
+    onAddItem?: (item: MenuItem, quantity: number, customizations?: string[], notes?: string) => void
     className?: string
 }
 
@@ -32,7 +35,8 @@ export const MenuDisplay = ({
         selectedCategory,
         setSelectedCategory,
         filteredItems,
-        searchItems
+        searchItems,
+        getItemsByCategory
     } = useMenu(restaurantId)
 
     const {
@@ -53,6 +57,29 @@ export const MenuDisplay = ({
             return activeFilters.every(filter => item.dietary_info?.includes(filter))
         })
         : dietaryFilteredItems
+
+    // Group items by category for "All" tab
+    const itemsByCategory = categories.map(category => ({
+        category,
+        items: getItemsByCategory(category.id).filter(item => {
+            // Apply dietary filters
+            if (activeFilters.length > 0) {
+                return activeFilters.every(filter => item.dietary_info?.includes(filter))
+            }
+            return true
+        }).filter(item => {
+            // Apply search filter
+            if (searchQuery.trim()) {
+                const searchTerm = searchQuery.toLowerCase()
+                return item.name.toLowerCase().includes(searchTerm) ||
+                    item.description?.toLowerCase().includes(searchTerm) ||
+                    item.ingredients?.some(ingredient =>
+                        ingredient.toLowerCase().includes(searchTerm)
+                    )
+            }
+            return true
+        })
+    })).filter(group => group.items.length > 0)
 
     // Loading state
     if (isLoading) {
@@ -141,12 +168,15 @@ export const MenuDisplay = ({
             {/* Category Tabs */}
             {!searchQuery && categories.length > 0 && (
                 <Tabs
-                    value={selectedCategory || ''}
-                    onValueChange={setSelectedCategory}
+                    value={selectedCategory || 'all'}
+                    onValueChange={(value) => setSelectedCategory(value === 'all' ? null : value)}
                     className="w-full"
                 >
                     <ScrollArea className="w-full whitespace-nowrap">
-                        <TabsList className="grid w-full grid-cols-1 lg:grid-cols-4">
+                        <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
+                            <TabsTrigger value="all" className="text-sm">
+                                All
+                            </TabsTrigger>
                             {categories.map((category) => (
                                 <TabsTrigger
                                     key={category.id}
@@ -162,34 +192,65 @@ export const MenuDisplay = ({
             )}
 
             {/* Menu Items */}
-            <div className="space-y-4">
+            <div className="space-y-6">
                 {searchQuery && (
                     <div className="text-sm text-muted-foreground">
                         {finalItems.length} result{finalItems.length !== 1 ? 's' : ''} for {"'"}{searchQuery}{"'"}
                     </div>
                 )}
 
-                {finalItems.length === 0 ? (
-                    <Card>
-                        <CardContent className="pt-6 text-center">
-                            <p className="text-muted-foreground">
-                                {searchQuery
-                                    ? `No items found for "${searchQuery}"`
-                                    : 'No items match your dietary filters'
-                                }
-                            </p>
-                        </CardContent>
-                    </Card>
+                {/* Show items by category when "All" is selected or searching */}
+                {(!selectedCategory || searchQuery) ? (
+                    itemsByCategory.length === 0 ? (
+                        <Card>
+                            <CardContent className="pt-6 text-center">
+                                <p className="text-muted-foreground">
+                                    {searchQuery
+                                        ? `No items found for "${searchQuery}"`
+                                        : 'No items match your dietary filters'
+                                    }
+                                </p>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        itemsByCategory.map(({ category, items }) => (
+                            <div key={category.id} className="space-y-4">
+                                <h2 className="text-xl font-semibold text-foreground border-b border-border pb-2">
+                                    {category.name}
+                                </h2>
+                                <div className="grid gap-4">
+                                    {items.map((item) => (
+                                        <MenuItemCard
+                                            key={item.id}
+                                            item={item}
+                                            onAddItem={onAddItem}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        ))
+                    )
                 ) : (
-                    <div className="grid gap-4">
-                        {finalItems.map((item) => (
-                            <MenuItemCard
-                                key={item.id}
-                                item={item}
-                                onAddItem={onAddItem}
-                            />
-                        ))}
-                    </div>
+                    /* Show items for selected category */
+                    finalItems.length === 0 ? (
+                        <Card>
+                            <CardContent className="pt-6 text-center">
+                                <p className="text-muted-foreground">
+                                    No items match your dietary filters
+                                </p>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <div className="grid gap-4">
+                            {finalItems.map((item) => (
+                                <MenuItemCard
+                                    key={item.id}
+                                    item={item}
+                                    onAddItem={onAddItem}
+                                />
+                            ))}
+                        </div>
+                    )
                 )}
             </div>
         </div>
@@ -199,36 +260,66 @@ export const MenuDisplay = ({
 // Individual menu item card component
 interface MenuItemCardProps {
     item: MenuItem
-    onAddItem?: (item: MenuItem, quantity: number) => void
+    onAddItem?: (item: MenuItem, quantity: number, customizations?: string[], notes?: string) => void
 }
 
 const MenuItemCard = ({ item, onAddItem }: MenuItemCardProps) => {
     const [quantity, setQuantity] = useState(1)
+    const [customizations, setCustomizations] = useState<string[]>([])
+    const [notes, setNotes] = useState('')
+    const [isCustomizationOpen, setIsCustomizationOpen] = useState(false)
+
+    // Sample customization options (in a real app, these would come from the database)
+    const availableCustomizations = [
+        'No onions',
+        'Extra cheese',
+        'Spicy',
+        'On the side',
+        'Well done',
+        'Medium rare',
+        'No sauce',
+        'Extra sauce'
+    ]
 
     const handleAddItem = () => {
         if (onAddItem) {
-            onAddItem(item, quantity)
+            onAddItem(item, quantity, customizations, notes)
             setQuantity(1) // Reset quantity after adding
+            setCustomizations([]) // Reset customizations
+            setNotes('') // Reset notes
+            setIsCustomizationOpen(false)
         }
     }
 
     const incrementQuantity = () => setQuantity(prev => prev + 1)
     const decrementQuantity = () => setQuantity(prev => Math.max(1, prev - 1))
 
+    const toggleCustomization = (customization: string) => {
+        setCustomizations(prev =>
+            prev.includes(customization)
+                ? prev.filter(c => c !== customization)
+                : [...prev, customization]
+        )
+    }
+
     return (
         <Card className="menu-item-card">
             <CardContent className="p-4">
                 <div className="flex gap-4">
                     {/* Item Image */}
-                    {item.image_url && (
-                        <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                        {item.image_url ? (
                             <img
                                 src={item.image_url}
                                 alt={item.name}
                                 className="w-full h-full object-cover"
                             />
-                        </div>
-                    )}
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                <span className="text-xs text-center">No Image</span>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Item Details */}
                     <div className="flex-1 min-w-0">
@@ -310,15 +401,99 @@ const MenuItemCard = ({ item, onAddItem }: MenuItemCardProps) => {
                                     </Button>
                                 </div>
 
-                                {/* Add to Cart Button */}
-                                <Button
-                                    onClick={handleAddItem}
-                                    size="sm"
-                                    className="gap-2"
-                                >
-                                    <Plus className="w-3 h-3" />
-                                    Add ${(item.price * quantity).toFixed(2)}
-                                </Button>
+                                {/* Action Buttons */}
+                                <div className="flex items-center gap-2">
+                                    {/* Customization Button */}
+                                    <Dialog open={isCustomizationOpen} onOpenChange={setIsCustomizationOpen}>
+                                        <DialogTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="gap-1"
+                                            >
+                                                <Settings className="w-3 h-3" />
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="max-w-md bg-white">
+                                            <DialogHeader>
+                                                <DialogTitle>Customize {item.name}</DialogTitle>
+                                            </DialogHeader>
+                                            <div className="space-y-4">
+                                                {/* Customization Options */}
+                                                <div>
+                                                    <Label className="text-sm font-medium">Options</Label>
+                                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                                        {availableCustomizations.map((option) => (
+                                                            <Button
+                                                                key={option}
+                                                                variant={customizations.includes(option) ? "default" : "outline"}
+                                                                size="sm"
+                                                                onClick={() => toggleCustomization(option)}
+                                                                className="text-xs justify-start"
+                                                            >
+                                                                {option}
+                                                            </Button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Notes */}
+                                                <div>
+                                                    <Label htmlFor="notes" className="text-sm font-medium">
+                                                        Special Instructions
+                                                    </Label>
+                                                    <Textarea
+                                                        id="notes"
+                                                        placeholder="Any special requests..."
+                                                        value={notes}
+                                                        onChange={(e: { target: { value: SetStateAction<string> } }) => setNotes(e.target.value)}
+                                                        className="mt-1"
+                                                        rows={3}
+                                                    />
+                                                </div>
+
+                                                {/* Apply Button */}
+                                                <Button
+                                                    onClick={() => setIsCustomizationOpen(false)}
+                                                    className="w-full"
+                                                >
+                                                    Apply Customizations
+                                                </Button>
+                                            </div>
+                                        </DialogContent>
+                                    </Dialog>
+
+                                    {/* Add to Cart Button */}
+                                    <Button
+                                        onClick={handleAddItem}
+                                        size="sm"
+                                        className="gap-2"
+                                    >
+                                        <Plus className="w-3 h-3" />
+                                        Add ${(item.price * quantity).toFixed(2)}
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Show active customizations */}
+                        {(customizations.length > 0 || notes) && (
+                            <div className="mt-3 p-2 bg-muted/50 rounded-lg">
+                                {customizations.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mb-2">
+                                        {customizations.map((customization) => (
+                                            <Badge key={customization} variant="outline" className="text-xs">
+                                                {customization}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                )}
+                                {notes && (
+                                    <div className="flex items-start gap-1 text-xs text-muted-foreground">
+                                        <StickyNote className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                        <span>{notes}</span>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -369,4 +544,4 @@ const MenuDisplaySkeleton = () => (
     </>
 )
 
-export default MenuDisplay
+export default MenuDisplay;

@@ -73,7 +73,7 @@ export const useMenu = (restaurantId: string): UseMenuReturn => {
 				items: itemsResult.data || [],
 				isLoading: false,
 				// Auto-select first category if none selected
-				selectedCategory: prev.selectedCategory || (categoriesResult.data?.[0]?.id ?? null),
+				selectedCategory: prev.selectedCategory || null,
 			}));
 		} catch (error) {
 			setState((prev) => ({
