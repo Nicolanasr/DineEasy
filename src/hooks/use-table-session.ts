@@ -86,6 +86,7 @@ export const useTableSession = (restaurantSlug: string, tableNumber: string): Us
 				.from("session_participants")
 				.select("*")
 				.eq("session_id", session.id)
+				.eq("has_left", false)
 				.order("joined_at", { ascending: true });
 
 			// Check if user is already a participant
@@ -350,16 +351,23 @@ export const useTableSession = (restaurantSlug: string, tableNumber: string): Us
 		}
 
 		try {
-			console.log("Leaving session, removing participant:", state.currentParticipant.display_name);
+			console.log("Leaving session, soft deleting participant:", state.currentParticipant.display_name);
 
-			const { error } = await supabase.from("session_participants").delete().eq("id", state.currentParticipant.id);
+			// Soft delete: mark as left instead of actually deleting
+			const { error } = await supabase
+				.from("session_participants")
+				.update({
+					has_left: true,
+					left_at: new Date().toISOString(), // Optional: track when they left
+				})
+				.eq("id", state.currentParticipant.id);
 
 			if (error) {
-				console.error("Error deleting participant:", error);
+				console.error("Error updating participant:", error);
 				throw new Error("Failed to leave session");
 			}
 
-			console.log("Successfully deleted participant from database");
+			console.log("Successfully marked participant as left in database");
 
 			// Remove from localStorage
 			localStorage.removeItem(`participant_${state.session.id}`);
