@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ShoppingCart, StickyNote, Trash2 } from 'lucide-react'
-import type { SessionParticipant, MenuItem } from '@/lib/supabase'
-import type { OrderItem } from '@/lib/types'
+import type { SessionParticipant, MenuItem, OrderItem } from '@/lib/supabase'
 
 // Shared cart item with participant and menu info
 type SharedCartItem = OrderItem & {
@@ -170,7 +169,7 @@ interface CartItemCardProps {
     onUpdateQuantity: (itemId: string, newQuantity: number) => Promise<void>
 }
 
-function CartItemCard({ cartItem, currentParticipant, onRemoveItem, onUpdateQuantity }: CartItemCardProps) {
+function CartItemCard({ cartItem, currentParticipant, onRemoveItem }: CartItemCardProps) {
     return (
         <div className="border rounded-lg p-4 space-y-3">
             <div className="flex items-start justify-between">
