@@ -1,17 +1,24 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/[restaurantSlug]/table/[tableId]/components/SharedCartTab.tsx
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ShoppingCart, StickyNote, Trash2 } from 'lucide-react'
+import type { SessionParticipant, MenuItem } from '@/lib/supabase'
+import type { OrderItem } from '@/lib/types'
+
+// Shared cart item with participant and menu info
+type SharedCartItem = OrderItem & {
+	menu_items: MenuItem;
+	session_participants: SessionParticipant | null;
+};
 
 interface SharedCartTabProps {
-    sharedCartItems: any[]
+    sharedCartItems: SharedCartItem[]
     isLoadingCart: boolean
     subscriptionStatus: string
     cartTotal: number
-    currentParticipant: any
+    currentParticipant: SessionParticipant | null
     onRemoveItem: (itemId: string) => Promise<void>
     onUpdateQuantity: (itemId: string, newQuantity: number) => Promise<void>
     onClearCart: () => Promise<void>
@@ -157,8 +164,8 @@ export function SharedCartTab({
 }
 
 interface CartItemCardProps {
-    cartItem: any
-    currentParticipant: any
+    cartItem: SharedCartItem
+    currentParticipant: SessionParticipant | null
     onRemoveItem: (itemId: string) => Promise<void>
     onUpdateQuantity: (itemId: string, newQuantity: number) => Promise<void>
 }

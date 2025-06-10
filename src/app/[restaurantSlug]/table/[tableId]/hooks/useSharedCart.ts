@@ -1,6 +1,7 @@
 // src/app/[restaurantSlug]/table/[tableId]/hooks/useSharedCart.ts
 import { useState, useEffect, useCallback } from "react";
-import { OrderInsert, OrderItemInsert, supabase, type MenuItem, type OrderItem, type SessionParticipant } from "@/lib/supabase";
+import { OrderInsert, OrderItemInsert, supabase, type MenuItem, type OrderItem, type SessionParticipant, type TableSession } from "@/lib/supabase";
+import { logger } from "@/lib/logger";
 
 // Shared cart item with participant and menu info
 type SharedCartItem = OrderItem & {
@@ -8,8 +9,7 @@ type SharedCartItem = OrderItem & {
 	session_participants: SessionParticipant | null;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function useSharedCart(session: any, currentParticipant: any) {
+export function useSharedCart(session: TableSession | null, currentParticipant: SessionParticipant | null) {
 	const [sharedCartItems, setSharedCartItems] = useState<SharedCartItem[]>([]);
 	const [isLoadingCart, setIsLoadingCart] = useState(false);
 	const [sharedOrderId, setSharedOrderId] = useState<string | null>(null);
@@ -28,7 +28,7 @@ export function useSharedCart(session: any, currentParticipant: any) {
 				.maybeSingle();
 
 			if (orderQueryError) {
-				console.error("Error querying existing order:", orderQueryError);
+				logger.cartLogger.error("Error querying existing order", orderQueryError);
 				return null;
 			}
 
@@ -47,26 +47,28 @@ export function useSharedCart(session: any, currentParticipant: any) {
 			const { data: newOrder, error: createOrderError } = await supabase.from("orders").insert(newOrderData).select("id").single();
 
 			if (createOrderError) {
-				console.error("Error creating order:", createOrderError);
+				logger.cartLogger.error("Error creating order", createOrderError);
 				return null;
 			}
 
 			return newOrder.id;
 		} catch (error) {
-			console.error("Failed to get or create shared order:", error);
+			logger.cartLogger.error("Failed to get or create shared order", error);
 			return null;
 		}
 	};
 
 	// Add item to shared cart
 	const handleAddItem = async (item: MenuItem, quantity: number, customizations?: string[], notes?: string) => {
-		console.log("🛒 Starting handleAddItem process...");
-		console.log("   Item:", item.name, "Quantity:", quantity);
-		console.log("   Current participant:", currentParticipant?.id);
-		console.log("   Session:", session?.id);
+		logger.cartLogger.debug("Starting add item process", {
+			item: item.name,
+			quantity,
+			participantId: currentParticipant?.id,
+			sessionId: session?.id,
+		});
 
 		if (!currentParticipant || !session) {
-			console.error("❌ Missing required data:", {
+			logger.cartLogger.error("Missing required data", {
 				hasParticipant: !!currentParticipant,
 				hasSession: !!session,
 			});
@@ -74,15 +76,15 @@ export function useSharedCart(session: any, currentParticipant: any) {
 		}
 
 		try {
-			console.log("🔍 Getting or creating shared order...");
+			logger.cartLogger.debug("Getting or creating shared order");
 			const orderId = await getOrCreateSharedOrder();
 
 			if (!orderId) {
-				console.error("❌ Could not get or create shared order");
+				logger.cartLogger.error("Could not get or create shared order");
 				return;
 			}
 
-			console.log("✅ Using order ID:", orderId);
+			logger.cartLogger.debug("Using order ID", { orderId });
 
 			const orderItemData: OrderItemInsert = {
 				order_id: orderId,
@@ -95,36 +97,33 @@ export function useSharedCart(session: any, currentParticipant: any) {
 				added_by_participant_id: currentParticipant.id,
 			};
 
-			console.log("📝 Inserting order item with data:", orderItemData);
+			logger.cartLogger.debug("Inserting order item", orderItemData);
 
 			const { data, error: itemsError } = await supabase.from("order_items").insert(orderItemData).select();
 
 			if (itemsError) {
-				console.error("❌ Error inserting order item:", itemsError);
+				logger.cartLogger.error("Error inserting order item", itemsError);
 				return;
 			}
 
-			console.log("✅ Item inserted successfully:", data);
-			console.log("🔄 Forcing cart reload...");
+			logger.cartLogger.info("Item added successfully", { itemId: data?.[0]?.id });
 
 			// Force immediate reload
 			await loadSharedCart();
-
-			console.log("✅ handleAddItem completed successfully");
 		} catch (error) {
-			console.error("💥 Failed to add item to shared cart:", error);
+			logger.cartLogger.error("Failed to add item to shared cart", error);
 		}
 	};
 
 	// Load shared cart
 	const loadSharedCart = useCallback(async () => {
 		if (!session?.id) {
-			console.log("❌ No session ID, skipping cart load");
+			logger.cartLogger.debug("No session ID, skipping cart load");
 			return;
 		}
 
 		try {
-			console.log("🔄 Loading shared cart for session:", session.id);
+			logger.cartLogger.debug("Loading shared cart", { sessionId: session.id });
 			setIsLoadingCart(true);
 
 			const { data: orderData, error: orderError } = await supabase
@@ -161,48 +160,43 @@ export function useSharedCart(session: any, currentParticipant: any) {
 				.eq("status", "cart")
 				.maybeSingle();
 
-			console.log("📦 Raw order data from DB:", orderData);
-			console.log("❌ Order query error:", orderError);
-
 			if (orderError) {
-				console.error("Error loading shared cart:", orderError);
+				logger.cartLogger.error("Error loading shared cart", orderError);
 				return;
 			}
 
 			if (orderData) {
 				const items = (orderData.order_items || []) as unknown as SharedCartItem[];
-				console.log("✅ Processed cart items:", items.length, items);
+				logger.cartLogger.debug("Cart loaded", { itemCount: items.length });
 				setSharedCartItems(items);
 				setSharedOrderId(orderData.id);
-				console.log("✅ Cart state updated - items count:", items.length);
 			} else {
-				console.log("📭 No order found, setting empty cart");
+				logger.cartLogger.debug("No order found, setting empty cart");
 				setSharedCartItems([]);
 				setSharedOrderId(null);
 			}
 		} catch (error) {
-			console.error("💥 Failed to load shared cart:", error);
+			logger.cartLogger.error("Failed to load shared cart", error);
 		} finally {
 			setIsLoadingCart(false);
-			console.log("🏁 loadSharedCart completed");
 		}
 	}, [session?.id]);
 
 	// Remove item from cart
 	const handleRemoveItem = async (itemId: string) => {
 		try {
-			console.log("Removing item:", itemId);
+			logger.cartLogger.debug("Removing item", { itemId });
 			const { error } = await supabase.from("order_items").delete().eq("id", itemId);
 
 			if (error) {
-				console.error("Error removing item:", error);
+				logger.cartLogger.error("Error removing item", error);
 				return;
 			}
 
-			console.log("Item removed, reloading cart");
+			logger.cartLogger.info("Item removed", { itemId });
 			await loadSharedCart();
 		} catch (error) {
-			console.error("Failed to remove item:", error);
+			logger.cartLogger.error("Failed to remove item", error);
 		}
 	};
 
@@ -214,7 +208,7 @@ export function useSharedCart(session: any, currentParticipant: any) {
 		}
 
 		try {
-			console.log("Updating quantity for item:", itemId, "to:", newQuantity);
+			logger.cartLogger.debug("Updating quantity", { itemId, newQuantity });
 
 			const item = sharedCartItems.find((item) => item.id === itemId);
 			if (!item) return;
@@ -230,14 +224,14 @@ export function useSharedCart(session: any, currentParticipant: any) {
 				.eq("id", itemId);
 
 			if (error) {
-				console.error("Error updating quantity:", error);
+				logger.cartLogger.error("Error updating quantity", error);
 				return;
 			}
 
-			console.log("Quantity updated, reloading cart");
+			logger.cartLogger.info("Quantity updated", { itemId, newQuantity });
 			await loadSharedCart();
 		} catch (error) {
-			console.error("Failed to update quantity:", error);
+			logger.cartLogger.error("Failed to update quantity", error);
 		}
 	};
 
@@ -246,18 +240,18 @@ export function useSharedCart(session: any, currentParticipant: any) {
 		if (!sharedOrderId) return;
 
 		try {
-			console.log("Clearing cart");
+			logger.cartLogger.info("Clearing cart", { orderId: sharedOrderId });
 			const { error } = await supabase.from("order_items").delete().eq("order_id", sharedOrderId);
 
 			if (error) {
-				console.error("Error clearing cart:", error);
+				logger.cartLogger.error("Error clearing cart", error);
 				return;
 			}
 
-			console.log("Cart cleared, reloading");
+			logger.cartLogger.info("Cart cleared successfully");
 			await loadSharedCart();
 		} catch (error) {
-			console.error("Failed to clear cart:", error);
+			logger.cartLogger.error("Failed to clear cart", error);
 		}
 	};
 
@@ -269,31 +263,25 @@ export function useSharedCart(session: any, currentParticipant: any) {
 			const { error } = await supabase.from("orders").update({ status: "submitted" }).eq("id", sharedOrderId);
 
 			if (error) {
-				console.error("Error submitting order:", error);
+				logger.cartLogger.error("Error submitting order", error);
 				return;
 			}
 
-			console.log("Order submitted successfully");
+			logger.cartLogger.info("Order submitted successfully", { orderId: sharedOrderId });
 			await loadSharedCart();
 		} catch (error) {
-			console.error("Failed to submit order:", error);
+			logger.cartLogger.error("Failed to submit order", error);
 		}
 	};
 
-	// Load cart when session is available
-	useEffect(() => {
-		if (session?.id) {
-			console.log("Session available, loading cart");
-			loadSharedCart();
-		}
-	}, [session?.id, loadSharedCart]);
-
-	// Set up real-time subscriptions
+	// Set up real-time subscriptions first, then load cart
 	useEffect(() => {
 		if (!session?.id) return;
 
-		console.log("Setting up real-time subscriptions for session:", session.id);
+		logger.cartLogger.debug("Setting up real-time subscriptions", { sessionId: session.id });
+		let hasLoadedInitialData = false;
 
+		// Set up subscription before loading data to avoid race conditions
 		const orderItemsChannel = supabase
 			.channel(`order_items_${session.id}`)
 			.on(
@@ -304,17 +292,27 @@ export function useSharedCart(session: any, currentParticipant: any) {
 					table: "order_items",
 				},
 				(payload) => {
-					console.log("Order items changed:", payload.eventType, payload);
-					loadSharedCart();
+					logger.cartLogger.debug("Order items changed", { eventType: payload.eventType });
+					// Only reload if we've already loaded initial data
+					if (hasLoadedInitialData) {
+						loadSharedCart();
+					}
 				}
 			)
 			.subscribe((status) => {
-				console.log("Order items subscription status:", status);
+				logger.cartLogger.debug("Subscription status changed", { status });
 				setSubscriptionStatus(status);
+
+				// Load cart data after subscription is established
+				if (status === "SUBSCRIBED" && !hasLoadedInitialData) {
+					logger.cartLogger.info("Subscription established, loading cart");
+					hasLoadedInitialData = true;
+					loadSharedCart();
+				}
 			});
 
 		return () => {
-			console.log("Cleaning up subscriptions");
+			logger.cartLogger.debug("Cleaning up subscriptions");
 			supabase.removeChannel(orderItemsChannel);
 			setSubscriptionStatus("disconnected");
 		};

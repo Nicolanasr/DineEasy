@@ -1,16 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { staffResetTable } from "@/lib/session-management";
+import { 
+  validateRequestBody, 
+  validateSessionId, 
+  validateStaffId, 
+  validateRestaurantId,
+  createValidationError,
+  handleApiError 
+} from "@/lib/api-validation";
 
 export async function POST(request: NextRequest) {
 	try {
-		const body = await request.json();
+		const body = await validateRequestBody(request);
 		const { tableId, restaurantId, staffId } = body;
 
-		if (!tableId || !restaurantId || !staffId) {
-			return NextResponse.json({ error: "tableId, restaurantId, and staffId are required" }, { status: 400 });
+		// Validate table ID
+		const validTableId = validateSessionId(tableId); // Using same validation as session ID
+		if (!validTableId) {
+			return createValidationError("Valid table ID is required", "tableId");
 		}
 
-		const newSession = await staffResetTable(tableId, restaurantId, staffId);
+		// Validate restaurant ID
+		const validRestaurantId = validateRestaurantId(restaurantId);
+		if (!validRestaurantId) {
+			return createValidationError("Valid restaurant ID is required", "restaurantId");
+		}
+
+		// Validate staff ID
+		const validStaffId = validateStaffId(staffId);
+		if (!validStaffId) {
+			return createValidationError("Valid staff ID is required", "staffId");
+		}
+
+		const newSession = await staffResetTable(validTableId, validRestaurantId, validStaffId);
 
 		return NextResponse.json({
 			success: true,
@@ -18,7 +40,6 @@ export async function POST(request: NextRequest) {
 			message: "Table reset successfully",
 		});
 	} catch (error) {
-		console.error("Staff reset table error:", error);
-		return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to reset table" }, { status: 500 });
+		return handleApiError(error);
 	}
 }

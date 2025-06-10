@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateParticipantActivity } from "@/lib/session-management";
+import { 
+  validateRequestBody, 
+  validateSessionId, 
+  createValidationError,
+  handleApiError 
+} from "@/lib/api-validation";
 
 export async function POST(request: NextRequest) {
 	try {
-		const body = await request.json();
+		const body = await validateRequestBody(request);
 		const { participantId } = body;
 
-		if (!participantId) {
-			return NextResponse.json({ error: "participantId is required" }, { status: 400 });
+		// Validate participant ID (using same validation as session ID)
+		const validParticipantId = validateSessionId(participantId);
+		if (!validParticipantId) {
+			return createValidationError("Valid participant ID is required", "participantId");
 		}
 
-		await updateParticipantActivity(participantId);
+		await updateParticipantActivity(validParticipantId);
 
 		return NextResponse.json({
 			success: true,
@@ -18,7 +26,6 @@ export async function POST(request: NextRequest) {
 			message: "Heartbeat received",
 		});
 	} catch (error) {
-		console.error("Heartbeat error:", error);
-		return NextResponse.json({ error: "Heartbeat failed" }, { status: 500 });
+		return handleApiError(error);
 	}
 }

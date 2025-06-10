@@ -307,12 +307,14 @@ const MenuItemCard = ({ item, onAddItem }: MenuItemCardProps) => {
             <CardContent className="p-4">
                 <div className="flex gap-4">
                     {/* Item Image */}
-                    <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                    <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-muted relative">
                         {item.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                                 src={item.image_url}
                                 alt={item.name}
-                                className="w-full h-full object-cover"
+                                className="object-cover"
+                                sizes="96px"
                             />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center text-muted-foreground">

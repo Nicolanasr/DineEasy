@@ -1,12 +1,12 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/[restaurantSlug]/table/[tableId]/components/ParticipantsCard.tsx
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Users } from 'lucide-react'
+import type { SessionParticipant } from '@/lib/supabase'
 
 interface ParticipantsCardProps {
-    participants: any[]
-    currentParticipant: any
+    participants: SessionParticipant[]
+    currentParticipant: SessionParticipant | null
 }
 
 export function ParticipantsCard({ participants, currentParticipant }: ParticipantsCardProps) {

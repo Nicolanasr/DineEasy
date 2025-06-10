@@ -1,5 +1,15 @@
 // src/lib/session-management.ts
 import { supabase, type TableSession, type SessionParticipant, type Restaurant } from "./supabase";
+import { Order } from "./types";
+import {
+  SESSION_DURATIONS,
+  TIME_MS,
+  SESSION_EXTENSION,
+  RESTAURANT_TYPES,
+  SESSION_STATUS,
+  CLOSE_REASONS,
+  CLEANUP,
+} from "./constants";
 
 // Session activity tracking interface
 export interface SessionActivity {
@@ -19,15 +29,15 @@ export interface RestaurantSettings {
 
 // Get session duration based on restaurant type
 export const getSessionDuration = (restaurantType: string): number => {
-	const durations = {
-		"fast-casual": 45, // minutes
-		"casual-dining": 90,
-		"fine-dining": 180,
-		cafe: 60,
-		bar: 240,
-		default: 120,
+	const typeMap: Record<string, number> = {
+		[RESTAURANT_TYPES.FAST_CASUAL]: SESSION_DURATIONS.FAST_CASUAL,
+		[RESTAURANT_TYPES.CASUAL_DINING]: SESSION_DURATIONS.CASUAL_DINING,
+		[RESTAURANT_TYPES.FINE_DINING]: SESSION_DURATIONS.FINE_DINING,
+		[RESTAURANT_TYPES.CAFE]: SESSION_DURATIONS.CAFE,
+		[RESTAURANT_TYPES.BAR]: SESSION_DURATIONS.BAR,
+		[RESTAURANT_TYPES.DEFAULT]: SESSION_DURATIONS.DEFAULT,
 	};
-	return durations[restaurantType as keyof typeof durations] || durations.default;
+	return typeMap[restaurantType] || SESSION_DURATIONS.DEFAULT;
 };
 
 // Check if session should be extended based on activity
@@ -42,8 +52,8 @@ export const shouldExtendSession = (session: TableSession, activity: SessionActi
 	);
 
 	// Extend if there's been activity in the last 30 minutes
-	const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
-	return lastActivity > thirtyMinutesAgo;
+	const activityThreshold = new Date(now.getTime() - SESSION_EXTENSION.ACTIVITY_THRESHOLD_MINUTES * TIME_MS.MINUTE);
+	return lastActivity > activityThreshold;
 };
 
 // Generate unique session token
@@ -58,12 +68,10 @@ export const getRestaurant = async (restaurantId: string): Promise<Restaurant | 
 	return restaurant;
 };
 
-// Smart session creation or joining logic
-export const createOrJoinSession = async (tableId: string, restaurantId: string): Promise<TableSession> => {
+// Find active session for a table
+const findActiveSession = async (tableId: string) => {
 	const now = new Date();
-
-	// Look for active session with related data
-	const { data: existingSession } = await supabase
+	return await supabase
 		.from("table_sessions")
 		.select(
 			`
@@ -73,62 +81,64 @@ export const createOrJoinSession = async (tableId: string, restaurantId: string)
     `
 		)
 		.eq("table_id", tableId)
-		.eq("status", "active")
+		.eq("status", SESSION_STATUS.ACTIVE)
 		.gt("expires_at", now.toISOString())
 		.maybeSingle();
+};
 
-	if (existingSession) {
-		// Check if session should be extended based on activity
-		const participants = existingSession.participants as SessionParticipant[];
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const orders = existingSession.orders as any[];
+// Calculate latest activity from participants and orders
+const calculateLatestActivity = (participants: SessionParticipant[], orders: Order[]): SessionActivity => {
+	const lastParticipantActivity = participants.length > 0
+		? participants
+				.map((p) => new Date(p.last_active_at))
+				.reduce((latest, current) => (current > latest ? current : latest), new Date(0))
+		: new Date(0);
 
-		if (participants.length > 0 || orders.length > 0) {
-			const lastParticipantActivity =
-				participants.length > 0
-					? participants
-							.map((p) => new Date(p.last_active_at))
-							.reduce((latest, current) => (current > latest ? current : latest), new Date(0))
-					: new Date(0);
+	const lastOrderActivity = orders.length > 0
+		? orders
+				.map((o) => new Date(o.updated_at))
+				.reduce((latest, current) => (current > latest ? current : latest), new Date(0))
+		: new Date(0);
 
-			const lastOrderActivity =
-				orders.length > 0
-					? orders.map((o) => new Date(o.updated_at)).reduce((latest, current) => (current > latest ? current : latest), new Date(0))
-					: new Date(0);
+	return {
+		lastParticipantActivityAt: lastParticipantActivity.toISOString(),
+		lastOrderAt: lastOrderActivity.toISOString(),
+	};
+};
 
-			const activity: SessionActivity = {
-				lastParticipantActivityAt: lastParticipantActivity.toISOString(),
-				lastOrderAt: lastOrderActivity.toISOString(),
-			};
+// Extend an existing session
+const extendExistingSession = async (session: TableSession): Promise<TableSession> => {
+	const now = new Date();
+	const newExpiry = new Date(now.getTime() + SESSION_EXTENSION.DEFAULT_EXTENSION_MINUTES * TIME_MS.MINUTE);
+	
+	const { data: updatedSession, error } = await supabase
+		.from("table_sessions")
+		.update({ expires_at: newExpiry.toISOString() })
+		.eq("id", session.id)
+		.select()
+		.single();
 
-			if (shouldExtendSession(existingSession, activity)) {
-				// Extend session by 1 hour
-				const newExpiry = new Date(now.getTime() + 60 * 60 * 1000);
-				const { data: updatedSession, error } = await supabase
-					.from("table_sessions")
-					.update({ expires_at: newExpiry.toISOString() })
-					.eq("id", existingSession.id)
-					.select()
-					.single();
+	if (error) throw new Error("Failed to extend session");
+	return updatedSession;
+};
 
-				if (error) throw new Error("Failed to extend session");
-				return updatedSession;
-			} else {
-				// Close inactive session
-				await supabase.from("table_sessions").update({ status: "completed" }).eq("id", existingSession.id);
-			}
-		} else {
-			// No participants or orders, return existing session
-			return existingSession;
-		}
-	}
+// Close an inactive session
+const closeInactiveSession = async (sessionId: string): Promise<void> => {
+	await supabase
+		.from("table_sessions")
+		.update({ status: SESSION_STATUS.COMPLETED })
+		.eq("id", sessionId);
+};
 
-	// Create new session
+// Create a new session
+const createNewSession = async (tableId: string, restaurantId: string): Promise<TableSession> => {
+	const now = new Date();
 	const restaurant = await getRestaurant(restaurantId);
 	const restaurantSettings = (restaurant?.settings as RestaurantSettings) || {};
-	const sessionDuration = restaurantSettings.session_duration_minutes || getSessionDuration(restaurantSettings.type || "default");
+	const sessionDuration = restaurantSettings.session_duration_minutes || 
+		getSessionDuration(restaurantSettings.type || RESTAURANT_TYPES.DEFAULT);
 
-	const expiresAt = new Date(now.getTime() + sessionDuration * 60 * 1000);
+	const expiresAt = new Date(now.getTime() + sessionDuration * TIME_MS.MINUTE);
 
 	const { data: newSession, error: sessionError } = await supabase
 		.from("table_sessions")
@@ -137,7 +147,7 @@ export const createOrJoinSession = async (tableId: string, restaurantId: string)
 			restaurant_id: restaurantId,
 			session_token: generateSessionToken(),
 			expires_at: expiresAt.toISOString(),
-			status: "active",
+			status: SESSION_STATUS.ACTIVE,
 		})
 		.select()
 		.single();
@@ -147,6 +157,32 @@ export const createOrJoinSession = async (tableId: string, restaurantId: string)
 	}
 
 	return newSession;
+};
+
+// Smart session creation or joining logic (refactored)
+export const createOrJoinSession = async (tableId: string, restaurantId: string): Promise<TableSession> => {
+	const { data: existingSession } = await findActiveSession(tableId);
+
+	if (existingSession) {
+		const participants = existingSession.participants as SessionParticipant[];
+		const orders = existingSession.orders as Order[];
+
+		if (participants.length > 0 || orders.length > 0) {
+			const activity = calculateLatestActivity(participants, orders);
+
+			if (shouldExtendSession(existingSession, activity)) {
+				return await extendExistingSession(existingSession);
+			} else {
+				await closeInactiveSession(existingSession.id);
+			}
+		} else {
+			// No participants or orders, return existing session
+			return existingSession;
+		}
+	}
+
+	// Create new session
+	return await createNewSession(tableId, restaurantId);
 };
 
 // Update participant activity timestamp
@@ -159,11 +195,14 @@ export const updateParticipantActivity = async (participantId: string): Promise<
 };
 
 // Extend session manually
-export const extendSession = async (sessionId: string, additionalMinutes: number = 60): Promise<void> => {
+export const extendSession = async (sessionId: string, additionalMinutes: number = SESSION_EXTENSION.DEFAULT_EXTENSION_MINUTES): Promise<void> => {
 	const now = new Date();
-	const newExpiry = new Date(now.getTime() + additionalMinutes * 60 * 1000);
+	const newExpiry = new Date(now.getTime() + additionalMinutes * TIME_MS.MINUTE);
 
-	const { error } = await supabase.from("table_sessions").update({ expires_at: newExpiry.toISOString() }).eq("id", sessionId);
+	const { error } = await supabase
+		.from("table_sessions")
+		.update({ expires_at: newExpiry.toISOString() })
+		.eq("id", sessionId);
 
 	if (error) {
 		throw new Error("Failed to extend session");
@@ -171,13 +210,13 @@ export const extendSession = async (sessionId: string, additionalMinutes: number
 };
 
 // End session manually
-export const endSession = async (sessionId: string, reason: "customer_left" | "manual_close" | "new_customers" | "staff_reset"): Promise<void> => {
+export const endSession = async (sessionId: string, reason: keyof typeof CLOSE_REASONS): Promise<void> => {
 	const { error } = await supabase
 		.from("table_sessions")
 		.update({
-			status: "completed",
+			status: SESSION_STATUS.COMPLETED,
 			settings: {
-				closed_reason: reason,
+				closed_reason: CLOSE_REASONS[reason],
 				closed_at: new Date().toISOString(),
 			},
 		})
@@ -194,15 +233,15 @@ export const staffResetTable = async (tableId: string, restaurantId: string, sta
 	await supabase
 		.from("table_sessions")
 		.update({
-			status: "completed",
+			status: SESSION_STATUS.COMPLETED,
 			settings: {
 				closed_by_staff: staffId,
-				closed_reason: "staff_reset",
+				closed_reason: CLOSE_REASONS.STAFF_RESET,
 				closed_at: new Date().toISOString(),
 			},
 		})
 		.eq("table_id", tableId)
-		.eq("status", "active");
+		.eq("status", SESSION_STATUS.ACTIVE);
 
 	// Create fresh session
 	return createOrJoinSession(tableId, restaurantId);
@@ -215,8 +254,8 @@ export const cleanupExpiredSessions = async (): Promise<{ count: number }> => {
 	// Mark expired sessions as completed
 	const { data: expiredSessions, error } = await supabase
 		.from("table_sessions")
-		.update({ status: "completed" })
-		.eq("status", "active")
+		.update({ status: SESSION_STATUS.COMPLETED })
+		.eq("status", SESSION_STATUS.ACTIVE)
 		.lt("expires_at", now.toISOString())
 		.select();
 
@@ -224,9 +263,13 @@ export const cleanupExpiredSessions = async (): Promise<{ count: number }> => {
 		throw new Error("Failed to cleanup expired sessions");
 	}
 
-	// Optional: Archive old completed sessions (7 days+)
-	const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-	await supabase.from("table_sessions").delete().eq("status", "completed").lt("updated_at", sevenDaysAgo.toISOString());
+	// Optional: Archive old completed sessions
+	const archiveDate = new Date(now.getTime() - CLEANUP.ARCHIVE_AFTER_DAYS * TIME_MS.DAY);
+	await supabase
+		.from("table_sessions")
+		.delete()
+		.eq("status", SESSION_STATUS.COMPLETED)
+		.lt("updated_at", archiveDate.toISOString());
 
 	return { count: expiredSessions?.length || 0 };
 };

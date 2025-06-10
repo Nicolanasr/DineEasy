@@ -1,7 +1,7 @@
 // src/hooks/use-menu.ts
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase, type MenuItem, type Database } from "@/lib/supabase";
 
 // Menu category type
@@ -32,13 +32,7 @@ export const useMenu = (restaurantId: string): UseMenuReturn => {
 	});
 
 	// Load menu data
-	useEffect(() => {
-		if (!restaurantId) return;
-
-		loadMenuData();
-	}, [restaurantId]);
-
-	const loadMenuData = async () => {
+	const loadMenuData = useCallback(async () => {
 		try {
 			setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
@@ -82,7 +76,13 @@ export const useMenu = (restaurantId: string): UseMenuReturn => {
 				isLoading: false,
 			}));
 		}
-	};
+	}, [restaurantId]);
+
+	useEffect(() => {
+		if (!restaurantId) return;
+
+		loadMenuData();
+	}, [restaurantId, loadMenuData]);
 
 	// Set selected category
 	const setSelectedCategory = (categoryId: string | null) => {

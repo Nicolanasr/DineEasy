@@ -1,15 +1,15 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/[restaurantSlug]/table/[tableId]/components/RestaurantHeader.tsx
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MapPin, Clock, Timer, LogOut } from "lucide-react";
+import type { Restaurant, TableSession, SessionParticipant } from "@/lib/supabase";
 
 interface RestaurantHeaderProps {
-    restaurant: any;
+    restaurant: Restaurant | null;
     tableId: string;
-    session: any;
+    session: TableSession | null;
     timeRemaining: string;
-    currentParticipant: any;
+    currentParticipant: SessionParticipant | null;
     onLeaveSession: () => Promise<void>;
     onExtendSession: () => Promise<void>;
 }

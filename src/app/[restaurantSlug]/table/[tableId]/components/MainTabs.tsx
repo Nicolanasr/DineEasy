@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/[restaurantSlug]/table/[tableId]/components/MainTabs.tsx
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -6,17 +5,23 @@ import { Menu, ShoppingCart } from 'lucide-react'
 import MenuDisplay from '@/components/menu/MenuDisplay'
 import { SharedCartTab } from './SharedCardTab'
 import { ServiceTab } from './ServiceTab'
-import type { MenuItem } from '@/lib/supabase'
+import type { MenuItem, Restaurant, SessionParticipant, OrderItem } from '@/lib/supabase'
+
+// Shared cart item with participant and menu info
+type SharedCartItem = OrderItem & {
+	menu_items: MenuItem;
+	session_participants: SessionParticipant | null;
+};
 
 interface MainTabsProps {
     activeTab: string
     onTabChange: (tab: string) => void
-    restaurant: any
-    sharedCartItems: any[]
+    restaurant: Restaurant | null
+    sharedCartItems: SharedCartItem[]
     isLoadingCart: boolean
     subscriptionStatus: string
     cartTotal: number
-    currentParticipant: any
+    currentParticipant: SessionParticipant | null
     onAddItem: (item: MenuItem, quantity: number, customizations?: string[], notes?: string) => Promise<void>
     onRemoveItem: (itemId: string) => Promise<void>
     onUpdateQuantity: (itemId: string, newQuantity: number) => Promise<void>
