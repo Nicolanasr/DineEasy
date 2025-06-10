@@ -189,9 +189,6 @@ function CartItemCard({ cartItem, currentParticipant, onRemoveItem }: CartItemCa
                             {cartItem.session_participants?.id === currentParticipant?.id && ' (You)'}
                         </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                        ${cartItem.unit_price.toFixed(2)} each
-                    </p>
                 </div>
                 <div className="flex items-center gap-3 text-right">
                     {/* <div className="flex items-center gap-1">
@@ -228,7 +225,7 @@ function CartItemCard({ cartItem, currentParticipant, onRemoveItem }: CartItemCa
             </div>
 
             {(cartItem.customizations?.length || cartItem.notes) && (
-                <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                <div className="bg-muted/50 rounded-lg space-y-2">
                     {cartItem.customizations && cartItem.customizations.length > 0 && (
                         <div>
                             <p className="text-xs font-medium text-muted-foreground mb-1">

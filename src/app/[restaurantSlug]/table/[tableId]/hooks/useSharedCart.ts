@@ -88,15 +88,16 @@ export function useSharedCart(session: TableSession | null, currentParticipant: 
 			logger.cartLogger.debug("Using order ID", { orderId });
 
 			// Calculate price including customizations
-			const customizationPriceAdjustment = customizations?.reduce((total, customization) => {
-				return total + customization.price_adjustment;
-			}, 0) || 0;
+			const customizationPriceAdjustment =
+				customizations?.reduce((total, customization) => {
+					return total + customization.price_adjustment;
+				}, 0) || 0;
 
 			const adjustedUnitPrice = Number(item.price) + customizationPriceAdjustment;
 			const totalPrice = adjustedUnitPrice * quantity;
 
 			// Convert customizations to string array for database storage
-			const customizationNames = customizations?.map(c => c.name) || null;
+			const customizationNames = customizations?.map((c) => c.name) || null;
 
 			const orderItemData: OrderItemInsert = {
 				order_id: orderId,
