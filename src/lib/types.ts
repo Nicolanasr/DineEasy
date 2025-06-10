@@ -34,6 +34,21 @@ export interface MenuItem {
   image_url?: string;
   allergens?: string[];
   dietary_info?: string[];
+  customizations?: MenuItemCustomization[];
+}
+
+export interface MenuItemCustomization {
+  id: string;
+  menu_item_id: string;
+  restaurant_id: string;
+  name: string;
+  type: "option" | "choice" | "addon";
+  price_adjustment: number;
+  is_required: boolean;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 // Real-time subscription payload interfaces

@@ -9,8 +9,8 @@ import type { OrderItem } from '@/lib/types'
 
 // Shared cart item with participant and menu info
 type SharedCartItem = OrderItem & {
-	menu_items: MenuItem;
-	session_participants: SessionParticipant | null;
+    menu_items: MenuItem;
+    session_participants: SessionParticipant | null;
 };
 
 interface SharedCartTabProps {
@@ -195,7 +195,7 @@ function CartItemCard({ cartItem, currentParticipant, onRemoveItem, onUpdateQuan
                     </p>
                 </div>
                 <div className="flex items-center gap-3 text-right">
-                    <div className="flex items-center gap-1">
+                    {/* <div className="flex items-center gap-1">
                         <Button
                             variant="outline"
                             size="sm"
@@ -213,7 +213,7 @@ function CartItemCard({ cartItem, currentParticipant, onRemoveItem, onUpdateQuan
                         >
                             +
                         </Button>
-                    </div>
+                    </div> */}
                     <span className="font-medium">
                         ${cartItem.total_price.toFixed(2)}
                     </span>

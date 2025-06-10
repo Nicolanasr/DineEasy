@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { OrderInsert, OrderItemInsert, supabase, type MenuItem, type OrderItem, type SessionParticipant, type TableSession } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
+import type { MenuItemCustomizationWithPrice } from "../components/MainTabs";
 
 // Shared cart item with participant and menu info
 type SharedCartItem = OrderItem & {
@@ -59,7 +60,7 @@ export function useSharedCart(session: TableSession | null, currentParticipant: 
 	};
 
 	// Add item to shared cart
-	const handleAddItem = async (item: MenuItem, quantity: number, customizations?: string[], notes?: string) => {
+	const handleAddItem = async (item: MenuItem, quantity: number, customizations?: MenuItemCustomizationWithPrice[], notes?: string) => {
 		logger.cartLogger.debug("Starting add item process", {
 			item: item.name,
 			quantity,
@@ -86,13 +87,24 @@ export function useSharedCart(session: TableSession | null, currentParticipant: 
 
 			logger.cartLogger.debug("Using order ID", { orderId });
 
+			// Calculate price including customizations
+			const customizationPriceAdjustment = customizations?.reduce((total, customization) => {
+				return total + customization.price_adjustment;
+			}, 0) || 0;
+
+			const adjustedUnitPrice = Number(item.price) + customizationPriceAdjustment;
+			const totalPrice = adjustedUnitPrice * quantity;
+
+			// Convert customizations to string array for database storage
+			const customizationNames = customizations?.map(c => c.name) || null;
+
 			const orderItemData: OrderItemInsert = {
 				order_id: orderId,
 				menu_item_id: item.id,
 				quantity,
-				unit_price: Number(item.price),
-				total_price: Number(item.price) * quantity,
-				customizations: customizations?.length ? customizations : null,
+				unit_price: adjustedUnitPrice,
+				total_price: totalPrice,
+				customizations: customizationNames?.length ? customizationNames : null,
 				notes: notes?.trim() || null,
 				added_by_participant_id: currentParticipant.id,
 			};

@@ -2,15 +2,15 @@
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Menu, ShoppingCart } from 'lucide-react'
-import MenuDisplay from '@/components/menu/MenuDisplay'
+import MenuDisplay, { type MenuItemCustomizationWithPrice } from '@/components/menu/MenuDisplay'
 import { SharedCartTab } from './SharedCardTab'
 import { ServiceTab } from './ServiceTab'
 import type { MenuItem, Restaurant, SessionParticipant, OrderItem } from '@/lib/supabase'
 
 // Shared cart item with participant and menu info
 type SharedCartItem = OrderItem & {
-	menu_items: MenuItem;
-	session_participants: SessionParticipant | null;
+    menu_items: MenuItem;
+    session_participants: SessionParticipant | null;
 };
 
 interface MainTabsProps {
@@ -22,7 +22,7 @@ interface MainTabsProps {
     subscriptionStatus: string
     cartTotal: number
     currentParticipant: SessionParticipant | null
-    onAddItem: (item: MenuItem, quantity: number, customizations?: string[], notes?: string) => Promise<void>
+    onAddItem: (item: MenuItem, quantity: number, customizations?: MenuItemCustomizationWithPrice[], notes?: string) => Promise<void>
     onRemoveItem: (itemId: string) => Promise<void>
     onUpdateQuantity: (itemId: string, newQuantity: number) => Promise<void>
     onClearCart: () => Promise<void>
@@ -50,14 +50,14 @@ export function MainTabs({
 }: MainTabsProps) {
     return (
         <Tabs value={activeTab} onValueChange={onTabChange}>
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-3 gap-2">
                 <TabsTrigger value="menu" className="gap-2">
                     <Menu className="w-4 h-4" />
                     Menu
                 </TabsTrigger>
                 <TabsTrigger value="cart" className="gap-2">
                     <ShoppingCart className="w-4 h-4" />
-                    Shared Cart
+                    Cart
                     {sharedCartItems.length > 0 && (
                         <Badge variant="secondary" className="ml-1">
                             {sharedCartItems.length}

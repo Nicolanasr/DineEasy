@@ -9,17 +9,22 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { Search, Filter, Clock, AlertCircle, Plus, Minus, Settings, StickyNote } from 'lucide-react'
+import { Search, Filter, Clock, AlertCircle, Plus, Settings, StickyNote } from 'lucide-react'
 import { useMenu, useDietaryFilters } from '@/hooks/use-menu'
+import { useRestaurantCustomizations } from '@/hooks/use-menu-customizations'
 import type { MenuItem } from '@/lib/supabase'
+
+export interface MenuItemCustomizationWithPrice {
+    name: string
+    price_adjustment: number
+}
 
 interface MenuDisplayProps {
     restaurantId: string
-    onAddItem?: (item: MenuItem, quantity: number, customizations?: string[], notes?: string) => void
+    onAddItem?: (item: MenuItem, quantity: number, customizations?: MenuItemCustomizationWithPrice[], notes?: string) => void
     className?: string
 }
 
@@ -38,6 +43,11 @@ export const MenuDisplay = ({
         searchItems,
         getItemsByCategory
     } = useMenu(restaurantId)
+
+    const {
+        getCustomizationsForItem,
+        isLoading: customizationsLoading
+    } = useRestaurantCustomizations(restaurantId)
 
     const {
         activeFilters,
@@ -82,7 +92,7 @@ export const MenuDisplay = ({
     })).filter(group => group.items.length > 0)
 
     // Loading state
-    if (isLoading) {
+    if (isLoading || customizationsLoading) {
         return (
             <div className={`space-y-6 ${className}`}>
                 <MenuDisplaySkeleton />
@@ -172,22 +182,22 @@ export const MenuDisplay = ({
                     onValueChange={(value) => setSelectedCategory(value === 'all' ? null : value)}
                     className="w-full"
                 >
-                    <ScrollArea className="w-full whitespace-nowrap">
-                        <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
-                            <TabsTrigger value="all" className="text-sm">
+                    <div className="w-full overflow-x-auto">
+                        <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-muted p-1 text-muted-foreground w-max gap-2">
+                            <TabsTrigger value="all" className="text-sm whitespace-nowrap">
                                 All
                             </TabsTrigger>
                             {categories.map((category) => (
                                 <TabsTrigger
                                     key={category.id}
                                     value={category.id}
-                                    className="text-sm"
+                                    className="text-sm whitespace-nowrap"
                                 >
                                     {category.name}
                                 </TabsTrigger>
                             ))}
                         </TabsList>
-                    </ScrollArea>
+                    </div>
                 </Tabs>
             )}
 
@@ -224,6 +234,7 @@ export const MenuDisplay = ({
                                             key={item.id}
                                             item={item}
                                             onAddItem={onAddItem}
+                                            customizations={getCustomizationsForItem(item.id)}
                                         />
                                     ))}
                                 </div>
@@ -247,6 +258,7 @@ export const MenuDisplay = ({
                                     key={item.id}
                                     item={item}
                                     onAddItem={onAddItem}
+                                    customizations={getCustomizationsForItem(item.id)}
                                 />
                             ))}
                         </div>
@@ -260,52 +272,60 @@ export const MenuDisplay = ({
 // Individual menu item card component
 interface MenuItemCardProps {
     item: MenuItem
-    onAddItem?: (item: MenuItem, quantity: number, customizations?: string[], notes?: string) => void
+    onAddItem?: (item: MenuItem, quantity: number, customizations?: MenuItemCustomizationWithPrice[], notes?: string) => void
+    customizations?: import('@/lib/supabase').MenuItemCustomization[]
 }
 
-const MenuItemCard = ({ item, onAddItem }: MenuItemCardProps) => {
+const MenuItemCard = ({ item, onAddItem, customizations: availableCustomizations = [] }: MenuItemCardProps) => {
     const [quantity, setQuantity] = useState(1)
-    const [customizations, setCustomizations] = useState<string[]>([])
+    const [selectedCustomizations, setSelectedCustomizations] = useState<string[]>([])
     const [notes, setNotes] = useState('')
     const [isCustomizationOpen, setIsCustomizationOpen] = useState(false)
 
-    // Sample customization options (in a real app, these would come from the database)
-    const availableCustomizations = [
-        'No onions',
-        'Extra cheese',
-        'Spicy',
-        'On the side',
-        'Well done',
-        'Medium rare',
-        'No sauce',
-        'Extra sauce'
-    ]
-
     const handleAddItem = () => {
         if (onAddItem) {
-            onAddItem(item, quantity, customizations, notes)
+            // Convert selected customization names to full objects with prices
+            const customizationsWithPrices: MenuItemCustomizationWithPrice[] = selectedCustomizations.map(customizationName => {
+                const customization = availableCustomizations.find(c => c.name === customizationName)
+                return {
+                    name: customizationName,
+                    price_adjustment: customization?.price_adjustment || 0
+                }
+            })
+
+            onAddItem(item, quantity, customizationsWithPrices, notes)
             setQuantity(1) // Reset quantity after adding
-            setCustomizations([]) // Reset customizations
+            setSelectedCustomizations([]) // Reset customizations
             setNotes('') // Reset notes
             setIsCustomizationOpen(false)
         }
     }
 
-    const incrementQuantity = () => setQuantity(prev => prev + 1)
-    const decrementQuantity = () => setQuantity(prev => Math.max(1, prev - 1))
+    // const incrementQuantity = () => setQuantity(prev => prev + 1)
+    // const decrementQuantity = () => setQuantity(prev => Math.max(1, prev - 1))
 
-    const toggleCustomization = (customization: string) => {
-        setCustomizations(prev =>
-            prev.includes(customization)
-                ? prev.filter(c => c !== customization)
-                : [...prev, customization]
+    const toggleCustomization = (customizationName: string) => {
+        setSelectedCustomizations(prev =>
+            prev.includes(customizationName)
+                ? prev.filter(c => c !== customizationName)
+                : [...prev, customizationName]
         )
     }
 
+    // Calculate price with customizations
+    const calculateItemPrice = () => {
+        const basePrice = item.price
+        const customizationPriceAdjustment = selectedCustomizations.reduce((total, customizationName) => {
+            const customization = availableCustomizations.find(c => c.name === customizationName)
+            return total + (customization?.price_adjustment || 0)
+        }, 0)
+        return basePrice + customizationPriceAdjustment
+    }
+
     return (
-        <Card className="menu-item-card">
-            <CardContent className="p-4">
-                <div className="flex gap-4">
+        <Card className="menu-item-card relative">
+            <CardContent className="px-0">
+                <div className="flex gap-4 items-center">
                     {/* Item Image */}
                     <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-muted relative">
                         {item.image_url ? (
@@ -365,13 +385,6 @@ const MenuItemCard = ({ item, onAddItem }: MenuItemCardProps) => {
                                     </div>
                                 )}
                             </div>
-
-                            {/* Price */}
-                            <div className="text-right flex-shrink-0">
-                                <div className="text-lg font-bold text-foreground">
-                                    ${item.price.toFixed(2)}
-                                </div>
-                            </div>
                         </div>
 
                         {/* Add to Cart Controls */}
@@ -379,7 +392,7 @@ const MenuItemCard = ({ item, onAddItem }: MenuItemCardProps) => {
                             <>
                                 <div className="flex items-center justify-between mt-4">
                                     {/* Quantity Controls */}
-                                    <div className="flex items-center gap-2">
+                                    {/* <div className="flex items-center gap-2">
                                         <Button
                                             variant="outline"
                                             size="sm"
@@ -402,69 +415,82 @@ const MenuItemCard = ({ item, onAddItem }: MenuItemCardProps) => {
                                         >
                                             <Plus className="w-3 h-3" />
                                         </Button>
-                                    </div>
+                                    </div> */}
 
                                     {/* Action Buttons */}
-                                    <div className="flex items-center gap-2">
-                                        {/* Customization Button */}
-                                        <Dialog open={isCustomizationOpen} onOpenChange={setIsCustomizationOpen}>
-                                            <DialogTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="gap-1"
-                                                >
-                                                    <Settings className="w-3 h-3" />
-                                                </Button>
-                                            </DialogTrigger>
-                                            <DialogContent className="max-w-md bg-white">
-                                                <DialogHeader>
-                                                    <DialogTitle>Customize {item.name}</DialogTitle>
-                                                </DialogHeader>
-                                                <div className="space-y-4">
-                                                    {/* Customization Options */}
-                                                    <div>
-                                                        <Label className="text-sm font-medium">Options</Label>
-                                                        <div className="grid grid-cols-2 gap-2 mt-2">
-                                                            {availableCustomizations.map((option) => (
-                                                                <Button
-                                                                    key={option}
-                                                                    variant={customizations.includes(option) ? "default" : "outline"}
-                                                                    size="sm"
-                                                                    onClick={() => toggleCustomization(option)}
-                                                                    className="text-xs justify-start"
-                                                                >
-                                                                    {option}
-                                                                </Button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Notes */}
-                                                    <div>
-                                                        <Label htmlFor="notes" className="text-sm font-medium">
-                                                            Special Instructions
-                                                        </Label>
-                                                        <Textarea
-                                                            id="notes"
-                                                            placeholder="Any special requests..."
-                                                            value={notes}
-                                                            onChange={(e: { target: { value: SetStateAction<string> } }) => setNotes(e.target.value)}
-                                                            className="mt-1"
-                                                            rows={3}
-                                                        />
-                                                    </div>
-
-                                                    {/* Apply Button */}
+                                    <div className="flex items-center gap-2 absolute top-0 right-0">
+                                        {/* Customization Button - only show if customizations are available */}
+                                        {availableCustomizations.length > 0 && (
+                                            <Dialog open={isCustomizationOpen} onOpenChange={setIsCustomizationOpen}>
+                                                <DialogTrigger asChild>
                                                     <Button
-                                                        onClick={() => setIsCustomizationOpen(false)}
-                                                        className="w-full"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="gap-1"
                                                     >
-                                                        Apply Customizations
+                                                        <Settings className="w-3 h-3" />
                                                     </Button>
-                                                </div>
-                                            </DialogContent>
-                                        </Dialog>
+                                                </DialogTrigger>
+                                                <DialogContent className="max-w-md bg-white">
+                                                    <DialogHeader>
+                                                        <DialogTitle>Customize {item.name}</DialogTitle>
+                                                    </DialogHeader>
+                                                    <div className="space-y-4">
+                                                        {/* Customization Options */}
+                                                        {availableCustomizations.length > 0 && (
+                                                            <div>
+                                                                <Label className="text-sm font-medium">Customizations</Label>
+                                                                <div className="grid grid-cols-1 gap-2 mt-2">
+                                                                    {availableCustomizations.map((customization) => (
+                                                                        <div key={customization.id} className="flex items-center justify-between">
+                                                                            <Button
+                                                                                variant={selectedCustomizations.includes(customization.name) ? "default" : "outline"}
+                                                                                size="sm"
+                                                                                onClick={() => toggleCustomization(customization.name)}
+                                                                                className="text-xs justify-start flex-1 mr-2"
+                                                                            >
+                                                                                {customization.name}
+                                                                                {customization.is_required && (
+                                                                                    <span className="ml-1 text-red-500">*</span>
+                                                                                )}
+                                                                            </Button>
+                                                                            {customization.price_adjustment !== 0 && (
+                                                                                <span className="text-xs text-muted-foreground min-w-0">
+                                                                                    {customization.price_adjustment > 0 ? '+' : ''}${customization.price_adjustment.toFixed(2)}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Notes */}
+                                                        <div>
+                                                            <Label htmlFor="notes" className="text-sm font-medium">
+                                                                Special Instructions
+                                                            </Label>
+                                                            <Textarea
+                                                                id="notes"
+                                                                placeholder="Any special requests..."
+                                                                value={notes}
+                                                                onChange={(e: { target: { value: SetStateAction<string> } }) => setNotes(e.target.value)}
+                                                                className="mt-1"
+                                                                rows={3}
+                                                            />
+                                                        </div>
+
+                                                        {/* Apply Button */}
+                                                        <Button
+                                                            onClick={() => setIsCustomizationOpen(false)}
+                                                            className="w-full"
+                                                        >
+                                                            Apply Customizations
+                                                        </Button>
+                                                    </div>
+                                                </DialogContent>
+                                            </Dialog>
+                                        )}
 
                                     </div>
                                     {/* Add to Cart Button */}
@@ -472,39 +498,46 @@ const MenuItemCard = ({ item, onAddItem }: MenuItemCardProps) => {
                             </>
                         )}
 
-                        {/* Show active customizations */}
-                        {(customizations.length > 0 || notes) && (
-                            <div className="mt-3 p-2 bg-muted/50 rounded-lg">
-                                {customizations.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 mb-2">
-                                        {customizations.map((customization) => (
-                                            <Badge key={customization} variant="outline" className="text-xs">
-                                                {customization}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                )}
-                                {notes && (
-                                    <div className="flex items-start gap-1 text-xs text-muted-foreground">
-                                        <StickyNote className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                        <span>{notes}</span>
-                                    </div>
-                                )}
+
+                    </div>
+                </div>
+                {/* Show active customizations */}
+                {(selectedCustomizations.length > 0 || notes) && (
+                    <div className="p-2 bg-muted/50 rounded-lg">
+                        {selectedCustomizations.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-2">
+                                {selectedCustomizations.map((customizationName) => {
+                                    const customization = availableCustomizations.find(c => c.name === customizationName)
+                                    return (
+                                        <Badge key={customizationName} variant="outline" className="text-xs">
+                                            {customizationName}
+                                            {customization?.price_adjustment && customization.price_adjustment !== 0 && (
+                                                <span className="ml-1">
+                                                    ({customization.price_adjustment > 0 ? '+' : ''}${customization.price_adjustment.toFixed(2)})
+                                                </span>
+                                            )}
+                                        </Badge>
+                                    )
+                                })}
                             </div>
                         )}
-
-                        <Button
-                            onClick={handleAddItem}
-                            variant="outline"
-                            size="sm"
-                            className="gap-2 mt-4 w-full"
-                        >
-                            <Plus className="w-3 h-3" />
-                            Add ${(item.price * quantity).toFixed(2)}
-                        </Button>
+                        {notes && (
+                            <div className="flex items-start gap-1 text-xs text-muted-foreground">
+                                <StickyNote className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                <span>{notes}</span>
+                            </div>
+                        )}
                     </div>
-
-                </div>
+                )}
+                <Button
+                    onClick={handleAddItem}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 w-full mt-2"
+                >
+                    <Plus className="w-3 h-3" />
+                    Add ${(calculateItemPrice() * quantity).toFixed(2)}
+                </Button>
             </CardContent>
         </Card>
     )

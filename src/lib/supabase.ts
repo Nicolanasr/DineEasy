@@ -434,6 +434,47 @@ export type Database = {
 					created_at?: string;
 				};
 			};
+			menu_item_customizations: {
+				Row: {
+					id: string;
+					menu_item_id: string;
+					restaurant_id: string;
+					name: string;
+					type: "option" | "choice" | "addon";
+					price_adjustment: number;
+					is_required: boolean;
+					display_order: number;
+					is_active: boolean;
+					created_at: string;
+					updated_at: string;
+				};
+				Insert: {
+					id?: string;
+					menu_item_id: string;
+					restaurant_id: string;
+					name: string;
+					type?: "option" | "choice" | "addon";
+					price_adjustment?: number;
+					is_required?: boolean;
+					display_order?: number;
+					is_active?: boolean;
+					created_at?: string;
+					updated_at?: string;
+				};
+				Update: {
+					id?: string;
+					menu_item_id?: string;
+					restaurant_id?: string;
+					name?: string;
+					type?: "option" | "choice" | "addon";
+					price_adjustment?: number;
+					is_required?: boolean;
+					display_order?: number;
+					is_active?: boolean;
+					created_at?: string;
+					updated_at?: string;
+				};
+			};
 		};
 		Views: {
 			[_ in never]: never;
@@ -466,14 +507,17 @@ export type SessionParticipant = Tables<"session_participants">;
 export type Order = Tables<"orders">;
 export type OrderItem = Tables<"order_items">;
 export type ServiceRequest = Tables<"service_requests">;
+export type MenuItemCustomization = Tables<"menu_item_customizations">;
 
 // Insert types for forms
 export type RestaurantInsert = InsertTables<"restaurants">;
 export type MenuItemInsert = InsertTables<"menu_items">;
 export type OrderInsert = InsertTables<"orders">;
 export type OrderItemInsert = InsertTables<"order_items">;
+export type MenuItemCustomizationInsert = InsertTables<"menu_item_customizations">;
 
 // Update types for mutations
 export type RestaurantUpdate = UpdateTables<"restaurants">;
 export type MenuItemUpdate = UpdateTables<"menu_items">;
 export type OrderUpdate = UpdateTables<"orders">;
+export type MenuItemCustomizationUpdate = UpdateTables<"menu_item_customizations">;
