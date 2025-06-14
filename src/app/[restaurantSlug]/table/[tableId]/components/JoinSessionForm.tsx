@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label'
 import { UserPlus } from 'lucide-react'
 
 interface JoinSessionFormProps {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onJoinSession: (displayName: string) => Promise<any>
 }
 

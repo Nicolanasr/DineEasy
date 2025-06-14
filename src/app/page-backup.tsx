@@ -1,3 +1,5 @@
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { PageLayout, PageHero, SectionHeader, FeatureCard, StatsGrid, CTASection } from '@/components/marketing'
 import {
     QrCode,
@@ -8,6 +10,7 @@ import {
     Star,
     CheckCircle,
     Zap,
+    ArrowRight,
 } from 'lucide-react'
 import { Metadata } from 'next'
 
@@ -56,7 +59,7 @@ export default function Home() {
             {/* Features Section */}
             <section id="features" className="py-20 px-4 bg-white">
                 <div className="container mx-auto max-w-6xl">
-                    <SectionHeader
+                    <SectionHeader 
                         title="Everything You Need for Modern Dining"
                         subtitle="Powerful features that transform how customers order and how restaurants operate"
                     />
@@ -104,7 +107,7 @@ export default function Home() {
             {/* How It Works Section */}
             <section id="how-it-works" className="py-20 px-4 bg-gray-50">
                 <div className="container mx-auto max-w-6xl">
-                    <SectionHeader
+                    <SectionHeader 
                         title="How DineEasy Works"
                         subtitle="Simple steps to revolutionize your restaurant's ordering process"
                     />
@@ -146,7 +149,7 @@ export default function Home() {
             {/* Benefits Section */}
             <section className="py-20 px-4 bg-white">
                 <div className="container mx-auto max-w-6xl">
-                    <SectionHeader
+                    <SectionHeader 
                         title="Why Restaurants Choose DineEasy"
                         subtitle="Discover the benefits that make DineEasy the preferred choice for modern restaurants"
                     />
@@ -182,13 +185,12 @@ export default function Home() {
                                 </div>
                             </div>
                         </div>
-
                         <div className="bg-gradient-to-br from-orange-100 to-amber-100 rounded-2xl p-8">
                             <div className="text-center">
                                 <Star className="w-16 h-16 text-orange-600 mx-auto mb-4" />
                                 <blockquote className="text-lg text-gray-700 mb-4">
-                                    &quot;DineEasy transformed our restaurant. Order accuracy improved dramatically,
-                                    and our staff can focus on creating amazing experiences instead of taking orders.&quot;
+                                    "DineEasy transformed our restaurant. Order accuracy improved dramatically,
+                                    and our staff can focus on creating amazing experiences instead of taking orders."
                                 </blockquote>
                                 <cite className="font-semibold">— Sarah Chen, Bistro Boulevard</cite>
                             </div>
